@@ -320,162 +320,60 @@ The system comes with three predefined rooms:
 }
 ```
 
-## Example Usage
-
-### Using curl
-
-```bash
-# List all available rooms
-curl "http://localhost:8000/rooms"
-
-# Get details of a specific room
-curl "http://localhost:8000/rooms/conference-room-1"
-
-# Create a new room
-curl -X POST "http://localhost:8000/rooms" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Training Room",
-    "capacity": 20,
-    "description": "Large training room with whiteboards"
-  }'
-
-# Create a booking (booking_id is auto-generated)
-curl -X POST "http://localhost:8000/book" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "room_id": "conference-room-1",
-    "start": "2026-02-03T09:00:00",
-    "end": "2026-02-03T10:00:00"
-  }'
-
-# List all bookings across all rooms
-curl "http://localhost:8000/bookings"
-
-# List all bookings for a specific room
-curl "http://localhost:8000/bookings/conference-room-1"
-
-# Find free slots
-curl "http://localhost:8000/free_slots/conference-room-1?from_time=2026-02-03T08:00:00&to_time=2026-02-03T18:00:00&duration_min=60"
-
-# Cancel a booking (use the booking_id from the create response)
-curl -X DELETE "http://localhost:8000/cancel" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "room_id": "conference-room-1",
-    "booking_id": "30586249-7441-4374-a9b3-8881e0eefa26"
-  }'
-
-# Delete a room (only if no bookings exist)
-curl -X DELETE "http://localhost:8000/rooms/room-a1b2c3d4"
-```
-
-### Using Python requests
-
-```python
-import requests
-
-base_url = "http://localhost:8000"
-
-# List all rooms
-response = requests.get(f"{base_url}/rooms")
-rooms = response.json()
-print(f"Available rooms: {len(rooms)}")
-
-# Create a new room
-room_data = {
-    "name": "Training Room",
-    "capacity": 20,
-    "description": "Large training room with whiteboards"
-}
-response = requests.post(f"{base_url}/rooms", json=room_data)
-new_room = response.json()
-print(f"Created room: {new_room['room_id']}")
-
-# Create a booking (booking_id is auto-generated)
-booking_data = {
-    "room_id": "conference-room-1",
-    "start": "2026-02-03T09:00:00",
-    "end": "2026-02-03T10:00:00"
-}
-response = requests.post(f"{base_url}/book", json=booking_data)
-booking = response.json()
-print(f"Created booking: {booking['booking_id']}")
-
-# List all bookings across all rooms
-response = requests.get(f"{base_url}/bookings")
-all_bookings = response.json()
-print(f"Found {len(all_bookings)} total bookings")
-
-# Cancel the booking using the returned booking_id
-cancel_data = {
-    "room_id": booking["room_id"],
-    "booking_id": booking["booking_id"]
-}
-response = requests.delete(f"{base_url}/cancel", json=cancel_data)
-print(f"Cancelled booking: {response.json()}")
-```
-
-## Architecture
-
-The API uses an efficient in-memory data structure for fast operations:
-
-- **Room Management**: Predefined rooms with CRUD operations and validation
-- **Sorted List**: Bookings are stored in chronological order using binary search for O(log n) conflict detection
-- **ID Mapping**: Direct lookup by booking ID for O(1) cancellation
-- **Room Isolation**: Each room maintains its own booking data structure
-- **Validation**: All booking operations validate room existence first
-
-## Development
-
-### Project Structure
-
-```
-.
-├── main.py              # FastAPI application and endpoints
-├── requirements.txt     # Python dependencies
-├── Dockerfile          # Docker configuration
-├── .dockerignore       # Docker ignore patterns
-└── README.md           # This documentation
-```
-
-### Dependencies
-
-- **FastAPI**: Modern, fast web framework for building APIs
-- **Uvicorn**: ASGI web server implementation
-- **Pydantic**: Data validation using Python type annotations
-
-### Running Tests
-
-```bash
-# Install test dependencies (add to requirements.txt if needed)
-pip install pytest httpx
-
-# Run tests
-pytest
-```
-
 ## Limitations
 
 - **In-Memory Storage**: Data is lost when the application restarts
 - **Single Instance**: Not suitable for multi-instance deployments without external storage
 - **No Authentication**: Currently no user authentication or authorization
 
-## Future Enhancements
+# Testing Documentation
 
-- [ ] Persistent database storage (PostgreSQL/SQLite)
-- [ ] User authentication and authorization
-- [ ] Room capacity and resource management
-- [ ] Email notifications for bookings
-- [ ] Recurring booking patterns
-- [ ] Booking modification (not just cancel/rebook)
-- [ ] API rate limiting
-- [ ] Comprehensive test suite
+This document provides information about testing the Room Booking API.
 
-## License
+## Prerequisites
 
-This project is currently in development. License information will be added soon.
+- Python 3.11+
+- Docker
+- pytest
+- FastAPI and dependencies
 
-## Contributing
+## Test Structure
 
-This project is currently in development. Contribution guidelines will be established as the project matures.
+The test suite is organized as follows:
+
+```
+tests/
+├── __init__.py
+├── test_rooms.py           # Room endpoint tests
+├── test_bookings.py        # Booking endpoint tests
+```
+
+## Docker Testing
+
+### Build Test Image
+
+```bash
+# Build the main application image
+docker build -t room-booking-api .
+
+# Or build with specific target for testing
+docker build --target test -t room-booking-api-test .
+```
+
+### Run Tests in Container
+
+```bash
+# Run tests in a container (one-time)
+docker run --rm room-booking-api-test pytest
+
+# Run tests with volume mount for live code changes
+docker run --rm -v ${PWD}:/app room-booking-api-test pytest
+
+# Run tests with coverage
+docker run --rm -v ${PWD}:/app room-booking-api-test pytest --cov=app tests/
+
+# Run specific test file in container
+docker run --rm room-booking-api-test pytest tests/test_rooms.py -v
+```
+
+
